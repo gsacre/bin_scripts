@@ -1,0 +1,41 @@
+#!/usr/bin/perl
+
+use strict;
+
+my $host = "";
+my $port = "";
+my $arguments = "";
+my $there = 0;
+
+if ($#ARGV > -1) {
+        if (($#ARGV == 1) && ($ARGV[0] !~ /-/)) {
+                $host = $ARGV[0];
+        } elsif (($#ARGV > 1) && ($ARGV[$#ARGV - 1] !~ /-/)) {
+                $host = $ARGV[$#ARGV - 1];
+                $port = $ARGV[$#ARGV];
+        } else {
+                $host = $ARGV[$#ARGV];
+        }
+}
+chomp($host);
+
+unshift(@ARGV, "/usr/bin/telnet");
+
+my $ret = system(@ARGV);
+
+open HOSTS, "<", "/home/gsacre/etc/hosts" or die $!;
+
+while (<HOSTS>) {
+        if ($_ =~ /$host/) {
+                $there = 1;
+        }
+}
+close HOSTS;
+
+open HOSTS, ">>", "/home/gsacre/etc/hosts" or die $!;
+if (!$there) {
+        print HOSTS  $host . "\n";
+        print "Host $host added to the list!\n";
+}
+
+close HOSTS;

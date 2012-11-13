@@ -1,0 +1,27 @@
+#!/bin/sh
+
+if [ `/sbin/ifconfig eth0 | grep inet | grep -v inet6 | wc -l` -lt 1 ]; then
+	echo "Your eth0 interface is not up, so let's not overcrowd the wifi..." >>  /home/gsacre/var/log/backup.log
+	exit 1
+fi
+
+if [ `grep -i softkinetic /etc/resolv.conf | wc -l` -lt 1 ]; then
+	echo "You are not on the Softkinetic network... I go back to sleep..." >> /home/gsacre/var/log/backup.log
+        exit 2
+fi
+
+if [ ! -d /mnt/u/backup_mail ]; then
+	echo "Your personal folder is not mounted. Mounting..." >> /home/gsacre/var/log/backup.log
+	mount /mnt/u
+fi
+
+if [ ! -d /mnt/u/backup_mail ]; then
+	echo "Ok, it seems we have a serious problem... Exiting..." >> /home/gsacre/var/log/backup.log
+	exit 1
+fi
+
+notify-send -u low "BACKUP" "Starting full backup of MAIL"
+echo "Backup of /home/gsacre/Maildir starting at `date`" >> /home/gsacre/var/log/backup.log
+duplicity full --allow-source-mismatch --encrypt-key 0C3DCFF4 /home/gsacre/Maildir file:///mnt/u/backup_mail >> /home/gsacre/var/log/backup.log
+echo "Backup of /home/gsacre/Maildir finished at `date`" >> /home/gsacre/var/log/backup.log
+notify-send -u low "BACKUP" "Ended full backup of MAIL"

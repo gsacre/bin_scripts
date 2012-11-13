@@ -1,0 +1,85 @@
+#!/bin/bash
+
+function usage {
+        echo "NAME"
+        echo "        skn - Search through the SK notes"
+        echo ""
+        echo "SYNOPSIS"
+        echo "        skn [-e|-h] <project> [[-a|-o] <search_word> ...]"
+        echo ""
+        echo "DESCRIPTION"
+        echo "        Performs a search through the notes and the minutes of meeting files of a"
+        echo "        particular project."
+        echo "        Either display the whole note entry or perform a grep on the result with a"
+        echo "        context of 5 lines before an after the word match/"
+        echo "        The first parameter which is not a switch must be a (at least) partial match of"
+        echo "        the project name. All the <search_word> can be a Perl regular expression."
+        echo ""
+        echo "        -e"
+        echo "                start the editor to add a new note"
+        echo ""
+        echo "        -h"
+        echo "               display this help"
+        echo ""
+        echo "AUTHOR"
+        echo "        Written by Gregory SACRE."
+}
+
+edit=0
+
+while [ $# != 0 ]; do
+        case $1 in
+                '-h')
+                        usage
+                        exit 0;;
+                '-e')
+                        edit=1
+                        shift;;
+                *)
+                        if [ `echo $1 | grep " -" | wc -l` -gt 0 ]; then
+                                echo "Option not recognized: $1"
+                                echo "Exiting"
+                                exit 2
+                        fi
+                        pattern=`echo $pattern $1`
+        esac
+        shift
+done
+
+# The first "non option" argument is the project, the rest is the pattern
+# Here, we set again the command line arguments with the vairable pattern
+set -- $pattern
+# We isolate the project as it's the first argument
+project=$1
+# We take the rest of the pattern
+shift
+pattern=$@
+
+echo -e "\e[1;31mProject:\e[0m $project"
+
+project_dir=$(find /home/gsacre/projects/ -maxdepth 1 -iname "*$project*" -type d 2>/dev/null)
+
+if [ $edit -eq 1 ]; then
+        gvim ${project_dir}/notes/tmp.note
+        exit 0
+fi
+
+echo -e "\e[1;31mPattern:\e[0m $pattern"
+
+if [ `echo $pattern | wc -w` -lt 1 ]; then
+        echo "You have given the project ($project) but no pattern."
+        echo "Please specify a pattern to search on."
+        exit 3
+fi
+
+tmp_file="/tmp/skn-$$"
+
+grep -li $pattern /home/gsacre/projects/*/notes/*.note >> $tmp_file
+grep -li $pattern ${project_dir}/mom/*.vorg >> $tmp_file
+
+cat $tmp_file | while read note_file; do
+        gvim --servername SKN --remote-tab-silent "+/${pattern}/" "$note_file"
+        sleep 0.2
+done
+
+rm $tmp_file

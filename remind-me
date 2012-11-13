@@ -1,0 +1,438 @@
+#!/usr/bin/perl -w                                  
+#                                                  
+#    Shell-reminder is a small Perl script aimed at displaying 
+#    reminders in your shell when you need it.                
+#    Shell-reminder-20050416 Copyright (C) 2005                
+#       E. Theeten <etheeten /<At>" gmail "<D0T>" com>,                      
+#       S. Wernerus <s.wernerus /<At>" gmail "<D0T>" gmail.com>.                    
+#                                                              
+#    This program is free software; you can redistribute it and/or 
+#    modify it under the terms of the GNU General Public License as 
+#    published by the Free Software Foundation; either version 2 of 
+#    the License, or (at your option) any later version.            
+#                                                                  
+#    This program is distributed in the hope that it will be useful, 
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of 
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the  
+#    GNU General Public License for more details.                    
+#                                                                    
+#    You should have received a copy of the GNU General Public License 
+#    along with this program; if not, write to the                    
+#        Free Software Foundation, Inc.                                
+#        59 Temple Place Suite 330 Boston MA  02111-1307  USA          
+
+use strict; 
+use Term::ANSIColor; 
+use Tie::File;      
+
+# DECLARE 
+
+# environment 
+
+my $version = '20050416'; 
+my $prog_name = eval {my @table = split (/\//, $0); pop @table;}; 
+my $home= $ENV{HOME} || $ENV{LOGDIR} || (getpwuid($<))[7];        
+#my $pager = $ENV{PAGER} || "(less || more)";                    
+
+# directories, files 
+my $config_dir = '/etc/reminder'; 
+my $home_db_dir = $home.'/.reminder'; 
+my $personnal_db = $home_db_dir.'/reminders.rdb'; 
+my @config_files = ($home_db_dir.'/reminder.conf', $config_dir.'/reminder.conf'); 
+my @db_dirs = ('/etc/reminder', $home_db_dir);                                    
+my @db_files;                                                                    
+my @user_db_selection;                                                            
+my $db_file_to_edit = '';                                                        
+
+# parse vars 
+my ($index_found, $version_found, $help_found, $file_found, $add_reminder_found); 
+my %options = ( 'OR_SEARCH'       => '0',                                        
+                'HEADER_SEARCH'   => '0',                                        
+                'PERSO_SEARCH'    => '0',                                        
+                'DB_DIRS'         => '' ,                                        
+                'VERBOSE'         => '0',                                        
+                'DISP_COLORS'     => '1',                                        
+                'EDITOR'          => '' );                                        
+my @regex;                                                                        
+
+my %colors = ( 'blue'  => 'bold blue', 
+               'green' => 'bold green', 
+               'red'   => 'bold red' ); 
+
+# SUB 
+
+sub help () { 
+    # display help information and exit 
+    print                              
+    "Usage: ", colorise("$prog_name ", $colors{'blue'}), 
+    "[", colorise("options", $colors{'green'}), "] [",  
+    colorise("-f ", $colors{'green'}), "database_file] [", 
+    colorise("words_to_match", $colors{'green'}), "]\n\n", 
+
+    colorise("Options:\n", $colors{'green'}), 
+    colorise(" none  ", $colors{'green'}),    
+    "display a list of available database files for selection\n", 
+    colorise("  -h   ", $colors{'green'}),                        
+    "display this help message\n",                                
+    colorise("  -v   ", $colors{'green'}),                        
+    "display the version\n",                                      
+    colorise("  -H   ", $colors{'green'}),                        
+    "perform a header search only\n",                            
+    colorise("  -F   ", $colors{'green'}),                        
+    "perform a full search, namely headers+content\n",            
+    colorise("  -a   ", $colors{'green'}),                        
+    "AND search\n",                                              
+    colorise("  -o   ", $colors{'green'}),                        
+    "OR search\n",                                                
+    colorise("  -p   ", $colors{'green'}),                        
+    "performs a search in the personal db only\n",                
+    colorise("  -c   ", $colors{'green'}),                        
+    "performs a complete search (all available db's)\n",          
+    colorise("  -k   ", $colors{'green'}),                        
+    "use colors in output\n",                                    
+    colorise("  -n   ", $colors{'green'}),                        
+    "don't use colors in output\n",                              
+    colorise("  -i   ", $colors{'green'}),                        
+    "display an index of all the headers\n",                      
+    colorise("  -A   ", $colors{'green'}),                        
+    "[database_file] Add a reminder using the editor defined by \$EDITOR\n", 
+
+    colorise("\nNote:\n", $colors{'green'}), 
+    "Notice that the default behaviour is configurable in the config file reminder.conf\n"; 
+    exit 0;                                                                                
+}                                                                                          
+
+sub version () { 
+    # display version information and exit 
+    print "Shell-reminder-$version Copyright (C) 2005, E. Theeten, S. Wernerus.\n", 
+    "Distributed under the GPL v2.\n";                                              
+    exit 0;                                                                        
+}                                                                                  
+
+sub colorise { 
+    # in: a string we want to print 
+    # out: this string colorised or unmodified, depending on user's choice 
+    my $string = shift;                                                    
+    my $color = shift;                                                    
+
+    if ($options{'DISP_COLORS'}) { 
+        return colored($string, $color); 
+    } else {                            
+        return ($string || 0);          
+    }                                    
+}                                        
+
+#my $colorise; 
+#if ($options{'DISP_COLORS'}) { 
+#    $colorise = sub {return (colored($_[0], $_[1]) || $_[0] || 0)}; 
+#} else {                                                            
+#    $colorise = sub {return ($_[0] || 0)};                          
+#}                                                                  
+
+#sub colorise { 
+#    return &$colorise($_[0], $_[1]); 
+#}                                    
+
+sub open_file { 
+    # in: reference to a file handle 
+    # check if the specified file is readable and a text file, then open it 
+    my ($fh, $file) = @_;                                                  
+    unless (-r $file) {                                                    
+        print "Could not read $file... \n"; return 0;                      
+    }                                                                      
+    unless (-T $file) {                                                    
+        print "Not a text file: $file... \n"; return 0;                    
+    }                                                                      
+    unless (open($$fh, "< $file")) {                                        
+        print "Could not open $file: $!\n"; return 0;                      
+    }                                                                      
+    return 1;                                                              
+}                                                                          
+
+sub ls_db_files { 
+    # in: list of directories 
+    # out: the @table of .rdb files contained in the passed list of directories 
+    my @dir_list = @_;                                                          
+    my @returned_list;                                                          
+  DIR:                                                                          
+    foreach my $dir (@dir_list) {                                              
+        #unless (opendir(DH, $dir)) {print "Not fatal: could not open directory $dir: $!\n"; next DIR}; 
+        unless (opendir(DH, $dir)) {                                                                    
+            next DIR;                                                                                  
+        }                                                                                              
+        my @ls = readdir DH;                                                                            
+        closedir DH or print "Not fatal: could not close directory $dir: $!\n";                        
+        @ls = grep(/\.rdb$/, @ls);                                                                      
+        map {$_ = $dir.'/'.$_} @ls;                                                                    
+        push @returned_list, @ls;                                                                      
+    }                                                                                                  
+    die "No database found ! Please supply at least one database..." unless (@returned_list);          
+    return @returned_list;                                                                              
+}                                                                                                      
+
+sub print_db_list() { 
+    # print a list of the available database files for selection and exit 
+    # print help info                                                    
+    print 'To get help: ', colorise($prog_name, $colors{'blue'}),        
+    colorise(' -h', $colors{'green'}), ' or ',                            
+    colorise($prog_name, $colors{'blue'}),                                
+    colorise(' remind-me', $colors{'green'}), "\n\n",                    
+    'Available database files to search in:', "\n";                      
+    #colorise('Available database files to search in:', $colors{'green'}), "\n"; 
+
+    # print file list 
+    my $i = 1;        
+    foreach (ls_db_files(@db_dirs)) { 
+        print colorise("$i. $_", $colors{'green'}), "\n"; 
+        $i++;                                            
+    }                                                    
+
+    # print file list usage 
+    print "\nUsage: ", colorise("$prog_name ", $colors{'blue'}), 
+    colorise(":1-3,5,7 words_to_match\n", $colors{'green'});    
+    exit 0;                                                      
+}                                                                
+
+sub add_template { 
+    unless (-e $db_file_to_edit) { 
+        print "The file $db_file_to_edit does not exist...\n"; 
+        #"Use 'remind-me -A' to edit your personnal data base $personnal_db\n"; 
+        exit 0;                                                                
+    }                                                                          
+    my @lines;                                                                  
+    tie @lines, 'Tie::File', $db_file_to_edit or die "Could not open $db_file_to_edit: $!\n"; 
+    unshift @lines, "[  ]\n\n[end-of-item]\n\n";                                              
+    untie @lines;                                                                            
+}                                                                                            
+
+sub add_reminder { 
+    if ($options{'EDITOR'}  && -e $options{'EDITOR'}) { 
+        add_template;                                  
+        exec "$options{'EDITOR'} $db_file_to_edit";    
+    } elsif ($ENV{'EDITOR'}  && -e $ENV{'EDITOR'}) {    
+        add_template;                                  
+        exec "$ENV{'EDITOR'} $db_file_to_edit";        
+    } else {                                            
+        die 'Please specify an editor either through the $EDITOR environment variable ', 
+        "or in the config file\n";                                                      
+    }                                                                                    
+}                                                                                        
+
+sub parse_config { 
+    # parse the right config file 
+    my $FH; 
+    my $config_file; 
+    #    foreach $config_file (@config_files) { 
+    #   if (-e $config_file) {print "$config_file\n"; last} 
+    #    }                                                  
+    # use the config file from home directory if available 
+    foreach (@config_files) {                              
+        $config_file = $_;                                  
+        if (-e $config_file) {last}                        
+    }                                                      
+    unless (open_file(\$FH, $config_file)) {                
+        print "Using default config.\n";                    
+        return 0;                                          
+    }                                                      
+    while (<$FH>) {                                        
+        my $option = $_;                                    
+        #if ($option =~ /(\w*)\s*=\s*"(.*?)"/ && $` !~ /#/) { 
+        if ($option =~ /^\s*(\w*)\s*=\s*"(.*?)"/) {          
+            $options{$1} = $2;                                
+        }                                                    
+    }                                                        
+    close($FH) || print "Could not close $config_file\n";    
+    if ($options{'DB_DIRS'}) {                                
+        my @splited = split (/\s+/, $options{'DB_DIRS'});    
+        push @db_dirs, @splited;                              
+    }                                                        
+    # uncomment for debugging the regex...                    
+    #while ( my ($key, $value) = each %options) {            
+    #print "$key = $value\n";                                
+    #}                                                        
+    #exit 0;                                                  
+}                                                            
+
+sub parse_arg ($) { 
+    # parse command line arguments 
+    my $arg = $_[0];              
+    if ($arg =~ /^-(.*)/) {        
+        $arg = $1;                
+        while ($arg) {            
+            my $opt = chop($arg); 
+          OPT: {                  
+                $help_found = 1, last OPT if ($opt eq "h"); 
+                $version_found = 1, last OPT if ($opt eq "v"); 
+                $index_found = 1, last OPT if ($opt eq "i");  
+                $options{'HEADER_SEARCH'} = 1, last OPT if ($opt eq "H"); 
+                $options{'HEADER_SEARCH'} = 0, last OPT if ($opt eq "F"); 
+                $options{'OR_SEARCH'} = 1, last OPT if ($opt eq "o");    
+                $options{'OR_SEARCH'} = 0, last OPT if ($opt eq "a");    
+                $options{'PERSO_SEARCH'} = 1, last OPT if ($opt eq "p"); 
+                $options{'PERSO_SEARCH'} = 0, last OPT if ($opt eq "c"); 
+                $options{'DISP_COLORS'} = 1, last OPT if ($opt eq "k");  
+                $options{'DISP_COLORS'} = 0, last OPT if ($opt eq "n");  
+                if ($opt eq "f") {                                        
+                    if (!$ARGV[0]) {                                      
+                        print colorise("No database file specified!", $colors{'red'}), "\n"; 
+                        exit -1;                                                            
+                    }                                                                        
+                    if (!-r $ARGV[0]) {                                                      
+                        print colorise("Database file ".$ARGV[0]." not readable or not found.", 
+                                       $colors{'red'}), "\n";                                  
+                        exit -1;                                                                
+                    }                                                                          
+                    #print "Using database file $ARGV[0] \n";                                  
+                    #unshift @db_files, shift @ARGV;                                            
+                    #@db_files = shift @ARGV;                                                  
+                    $file_found = shift @ARGV;                                                  
+                    last OPT;                                                                  
+                }                                                                              
+                if ($opt eq "A") {                                                              
+                    if ($ARGV[0]) {                                                            
+                        $db_file_to_edit = $ARGV[0];                                            
+                    } else {                                                                    
+                        $db_file_to_edit = $personnal_db;                                      
+                    }                                                                          
+                    $add_reminder_found = 1;                                                    
+                    last OPT;                                                                  
+                }                                                                              
+                print colorise("Unknown option: -$opt", $colors{'red'}), "\n";                  
+                help ();                                                                        
+            }                                                                                  
+        }                                                                                      
+    } elsif ($arg =~ /^:(.*)/) {                                                                
+        my @splitted_arg = split (/,/, $1);                                                    
+        foreach (@splitted_arg) {                                                              
+            if (/^(\d+)(?:-(\d+))?$/) {                                                        
+                push @user_db_selection, $1..($2 || $1);                                        
+            } else {                                                                            
+                print colorise("Please supply a well formed request!\n\n", $colors{'red'});    
+                print_db_list();                                                                
+            }                                                                                  
+        }                                                                                      
+        # grep only non-repeted items                                                          
+        my %seen;                                                                              
+        @user_db_selection = grep {!$seen{$_}++} @user_db_selection;                            
+        return 1;                                                                              
+    } else {                                                                                    
+        push @regex, $arg;                                                                      
+        return 1;                                                                              
+    }                                                                                          
+}                                                                                              
+
+# MAIN 
+
+# parse config file 
+parse_config;      
+
+# display list of available db files if no argument at all 
+print_db_list() if (!$ARGV[0]);                            
+
+# then, parse arguments 
+parse_arg(shift @ARGV) while ($ARGV[0]); 
+
+# display help/version if help/version requested 
+help() if ($help_found);                        
+version() if ($version_found);                  
+
+# add a reminder ? 
+add_reminder if ($add_reminder_found); 
+
+# display help if no patern to match and no index requested 
+help() if (!$regex[0] && !$index_found);                    
+
+# take only the files corresponding to the user selection 
+DB_FILES: {                                              
+    @db_files = ($home_db_dir.'/reminders.rdb'), last DB_FILES if ($options{'PERSO_SEARCH'}); 
+    @db_files = $file_found, last DB_FILES if ($file_found);                                  
+    if (@user_db_selection) {                                                                
+        my @all_dbs = ls_db_files(@db_dirs);                                                  
+        foreach (@user_db_selection) {                                                        
+            if (($_-1) <= $#all_dbs) {                                                        
+                push @db_files, $all_dbs[$_-1];                                              
+            } else {                                                                          
+                print colorise("Value out of range!\n", $colors{'red'});                      
+                print_db_list();                                                              
+            }                                                                                
+        }                                                                                    
+        last DB_FILES;                                                                        
+    }                                                                                        
+    push @db_files, ls_db_files(@db_dirs);                                                    
+}                                                                                            
+
+# modify regex table depending on the header/full search type 
+REGEX: {                                                      
+    # Index                                                  
+    if ($index_found) {                                      
+        print colorise("Index:\n", $colors{'green'}); last REGEX; 
+    }                                                            
+    # Header search...                                            
+    if ($options{'HEADER_SEARCH'}) {                              
+        print colorise("Header search:", $colors{'green'}), "\n"; 
+        #map {$_ = "^\\\[.*$_.*\\\]"} @regex;                    
+        map {$_ = qr/^\[.*$_.*\]/i} @regex;                      
+        last REGEX;                                              
+    }                                                            
+    # Full search...                                              
+    print colorise("Full search:", $colors{'green'}), "\n";      
+    map {$_ = qr/$_/i} @regex;                                    
+}                                                                
+
+# compile frequently used regexes 
+my $header_regex = qr/^\[.*\]$/;     # used to match headers with //m 
+my $not_header_regex = qr/^[^\[].*/; # used to match item content lines 
+# patern for OR search                                                  
+my $string = join('|', @regex);                                        
+my $patern = qr/$string/;                                              
+
+# MAIN LOOPS 
+
+$/ = "[end-of-item]";           # read file by item 
+my $FH;                                            
+FILE:                                              
+foreach my $db_file (@db_files) {                  
+    open_file(\$FH, $db_file) || next FILE;        
+    print colorise("\n$db_file\n", $colors{'green'}) if ($options{'VERBOSE'}); 
+  LOOP:                                                                        
+    while (<$FH>) {                                                            
+        chomp;                                                                
+        my $item = $_;                                                        
+        $item =~ s/\s*//;       # remove the leading spaces                    
+        if ($index_found) { 
+            # print headers only... 
+            #if ($item =~ /(^\[.*\]$)/m) { 
+            if ($item =~ /($header_regex)/m) { 
+                print colorise("$1\n", $colors{'blue'}); 
+            } 
+            next LOOP; 
+        } 
+        if (!$options{'OR_SEARCH'}) { 
+            # AND search... 
+            foreach $patern (@regex) { 
+                #if ($item =~ /$patern/i) { 
+                if ($item =~ /$patern/) { 
+                    # patern in red in item content 
+                    $item =~ s/($not_header_regex)($patern)/$1.colorise($2, $colors{'red'})/egm; 
+                } else { 
+                    next LOOP; 
+                } 
+            } 
+            # header in blue 
+            $item =~ s/($header_regex)/colorise($1, $colors{'blue'})/em; 
+            print "\n$item"; 
+        } else { 
+            # OR search... 
+            #if ($item =~ /$patern/i) { 
+            if ($item =~ /$patern/) { 
+                # patern in red in item content 
+                $item =~ s/($not_header_regex)($patern)/$1.colorise($2, $colors{'red'})/egm; 
+                # header in blue 
+                $item =~ s/($header_regex)/colorise($1, $colors{'blue'})/em; 
+                print "\n$item"; 
+            } 
+        } 
+    } 
+    close($FH) or die "Could not close $db_file: $!"; 
+} 
+undef $/;

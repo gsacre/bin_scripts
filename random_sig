@@ -1,0 +1,5 @@
+#!/bin/bash
+
+random=`expr $RANDOM % 5 + 1`
+
+cp /home/gsacre/signature/signature${random}.txt /home/gsacre/.signature

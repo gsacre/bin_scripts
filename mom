@@ -1,0 +1,89 @@
+#!/bin/bash
+audio_recording=0
+agenda=0
+
+usage () {
+	echo "$0 [-h] [-n]"
+	echo ""
+	echo "    -h: display this help"
+ 	echo "    -a: audio recording. This option will start the audio for"
+        echo "        audio recording (mp3 format)."
+	echo "    -a: agenda. Just starts the editor to prepare the agenda."
+	echo "        This is different from the minutes of meeting..."
+	echo ""
+	exit 0
+}
+
+while getopts ":ha" opt; do
+	case $opt in
+		h)
+			usage
+			;;
+		a)
+			audio_recording=1
+			;;
+		\?)
+			echo "Invalid option: $OPTARG" >&2
+                        exit 1
+			;;
+	esac
+done
+
+date=$( date '+%Y-%m-%d_%H:%M' )
+projects=$( find /home/gsacre/projects/ -maxdepth 1 -type d | sed 's!/home/gsacre/projects/!!g' | sort )
+
+echo "Please enter the project name: "
+
+index=0
+
+declare -a list_of_proj
+
+for proj in $projects; do
+	list_of_proj=( "${list_of_proj[@]}" "$index-$proj" )
+	if [ $index -lt 10 ]; then
+		echo "$index ) $proj"
+	else
+		echo "$index) $proj"
+	fi
+	index=$(( $index + 1 ))
+done
+
+echo ""
+echo -n "Your choice: "
+read choice
+
+if [ ${#choice} -lt 1 ]; then
+	proj_chosen=misc
+else
+	proj_chosen=$( echo ${list_of_proj[$choice]} | awk -F '-' '{ print $2; }' )
+fi
+
+echo
+echo "You have chosen the project: $proj_chosen"
+echo
+echo -n "Please enter the context of the meeting: "
+read context
+
+sound_card=$( ls /sys/class/sound/ | grep card  )
+
+gvim "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}.mom"
+
+if [ $audio_recording -eq 1 ]; then
+	if [ $( ls /sys/class/sound/ | grep card | wc -l ) -eq 1 ] && [ $( echo $sound_card | grep 0 | wc -l ) -gt 0 ]; then
+		echo "Sound cards 0 found!"
+		/usr/bin/arecord -f S32_LE -r48000 -c2 -D hw:0 "/home/gsacre/projects/${proj_chosen}/mom/audio/${context}_-_${date}.wav"
+	elif [ $( ls /sys/class/sound/ | grep card | wc -l ) -eq 1 ] && [ $( echo $sound_card | grep 1 | wc -l ) -gt 0 ]; then
+		echo "Sound cards 1 found!"
+		/usr/bin/arecord -f S32_LE -r48000 -c2 -D hw:1 "/home/gsacre/projects/${proj_chosen}/mom/audio/${context}_-_${date}.wav"
+	elif [ $( ls /sys/class/sound/ | grep card | wc -l ) -gt 1 ]; then
+		echo "Two sound cards found!"
+		/usr/bin/arecord -f S32_LE -r48000 -c2 -D hw:0 "/home/gsacre/projects/${proj_chosen}/mom/audio/${context}_-_${date}.wav"
+        fi
+
+	cd "/home/gsacre/projects/${proj_chosen}/mom/audio"
+	for files in *.wav; do
+		/usr/bin/lame --alt-preset extreme "$files" "`basename \"$files\" wav`mp3"
+	done
+
+	/bin/rm *.wav
+fi

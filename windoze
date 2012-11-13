@@ -1,0 +1,2 @@
+#Start rdesktop
+rdesktop -g 1680x1050 -P -z -x l -r sound:off -u "SOFTKINETIC\GSacre" 192.168.12.181:3389
