@@ -76,6 +76,7 @@ tmp_file="/tmp/skn-$$"
 
 grep -li $pattern /home/gsacre/projects/*/notes/*.note >> $tmp_file
 grep -li $pattern ${project_dir}/mom/*.vorg >> $tmp_file
+grep -li $pattern ${project_dir}/mom/*.mom >> $tmp_file
 
 cat $tmp_file | while read note_file; do
         gvim --servername SKN --remote-tab-silent "+/${pattern}/" "$note_file"
