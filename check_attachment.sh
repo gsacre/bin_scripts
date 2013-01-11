@@ -38,6 +38,9 @@ function ask {
     zenity --question --title 'mutt' --text 'Are you sure you did not forget the attachment?'
 }
 
+# Getting the email addresses of the outgoing mail
+cat $t | /usr/bin/lbdb-fetchaddr -a
+
 ###
 # FINAL DECISION:
 # chain series of functions, use ! || && for logic connections,

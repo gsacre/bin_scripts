@@ -4,11 +4,8 @@ DISPLAY=:0.0
 export DISPLAY
 
 if [ `/sbin/ifconfig eth0 | grep inet | grep -v inet6 | wc -l` -lt 1 ]; then
-	echo "Your eth0 interface is not up, so let's try the wifi..." >>  /home/gsacre/var/log/backup.log
-        if [ `/sbin/ifconfig wlan0 | grep inet | grep -v inet6 | wc -l` -lt 1 ]; then
-                echo "Your wlan0 interface is not up, I give up..." >>  /home/gsacre/var/log/backup.log
-                exit 1
-        fi
+	echo "Your eth0 interface is not up, so let's not overcrowd the wifi..." >>  /home/gsacre/var/log/backup.log
+	exit 1
 fi
 
 if [ `grep -i softkinetic /etc/resolv.conf | wc -l` -lt 1 ]; then

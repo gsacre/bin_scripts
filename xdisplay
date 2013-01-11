@@ -3,6 +3,9 @@
 # This script toggles the extended monitor outputs if something is connected
 #
 
+DISPLAY=:0.0
+export DISPLAY
+
 # your notebook monitor
 DEFAULT_OUTPUT='LVDS1'
 

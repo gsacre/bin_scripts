@@ -1,0 +1,154 @@
+#!/usr/bin/perl
+
+use strict;
+
+my $start;
+my $end;
+my $date;
+my $who;
+my $what;
+
+my $longaddrlen = -1;
+
+sub getsumm
+{
+	my $line = shift;
+
+	$line =~ /^SUMMARY(.*)$/;
+	$line =~ s/^SUMMARY.*://g;
+
+	$line =~ s/\\,/,/g;
+	$line =~ s/\\;/;/g;
+        $line =~ s/\n//g;
+        #$line =~ s/\\\\/\//g;
+
+	return($line);
+}
+
+sub gettime
+{
+	my $line = shift;				# Time line.
+	my $key;					# Key from line.
+	my $val;					# Value from line.
+	my $retstr;					# Return string.
+	my @chron = ();					# Time fields.
+
+	#
+	# Dig out the values from the line.
+	#
+	$line =~ /(.*?):(.*)/;
+	$key = $1;
+	$val = $2;
+
+	#
+	# Get the time values.
+	#
+	$val =~ s/[<>]//g;
+	@chron = split /T/, $val;
+	$chron[0] =~ s/(....)(..)(..)/$3\/$2\/$1/;
+	$chron[1] =~ s/(..)(..)(.*)/$1:$2/;
+
+	#
+	# Deal with the time zone, if present.
+	#
+	if($key =~ /TZID/) {
+		$key =~ /TZID="(.*)"/;
+		$chron[2] = $1;
+	}
+
+	return($chron[1]);
+}
+
+sub getdate
+{
+	my $line = shift;				# Time line.
+	my $key;					# Key from line.
+	my $val;					# Value from line.
+	my $retstr;					# Return string.
+	my @chron = ();					# Time fields.
+
+	#
+	# Dig out the values from the line.
+	#
+	$line =~ /(.*?):(.*)/;
+	$key = $1;
+	$val = $2;
+
+	#
+	# Get the time values.
+	#
+	$val =~ s/[<>]//g;
+	@chron = split /T/, $val;
+	$chron[0] =~ s/(....)(..)(..)/$3\/$2\/$1/;
+	$chron[1] =~ s/(..)(..)(.*)/$1:$2/;
+
+	#
+	# Deal with the time zone, if present.
+	#
+	if($key =~ /TZID/) {
+		$key =~ /TZID="(.*)"/;
+		$chron[2] = $1;
+	}
+
+	return($chron[0]);
+}
+
+sub getname
+{
+	my $ln = shift;				# Data line.
+	my $name;				# Name from data line.
+	my $email;				# Email address from data line.
+	my $retstr;				# Return string.
+
+	#
+	# Dig the name and email address from the line.
+	#
+	$ln =~ /CN=(.+?):/i;
+	$name  = $1;
+
+	#
+	# Dig the name and email address from the line.
+	#
+	$ln =~ /:mailto:(.+)$/i;
+	$email = $1;
+
+	#
+	# Save the length of the longest email address.
+	#
+	if(length($email) > $longaddrlen) {
+		$longaddrlen = length($email);
+	}
+
+	#
+	# Build and return our return string.
+	#
+	if(($name eq "") && ($email eq "")) {
+		$retstr = "";
+	} else {
+                #$retstr = "($email)\t\t$name";
+		$retstr = "$name ($email)";
+	}
+
+	return($retstr);
+}
+
+while (<STDIN>) {
+        if ($_ =~ /^ORGANIZER/) {
+                $who = getname($_);
+        }
+
+        if ($_ =~ /^DTSTART/) {
+                $start = gettime($_);
+                $date = getdate($_);
+        }
+
+        if ($_ =~ /^DTEND/) {
+                $end = gettime($_);
+        }
+
+        if ($_ =~ /^SUMMARY/) {
+                $what = getsumm($_);
+        }
+}
+
+print "google --cal SoftKinetic \"$what with $who at $start $date\""
