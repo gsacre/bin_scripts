@@ -14,6 +14,8 @@ sub getsumm
 {
 	my $line = shift;
 
+        $line =~ s/"//g;
+
 	$line =~ /^SUMMARY(.*)$/;
 	$line =~ s/^SUMMARY.*://g;
 
@@ -32,6 +34,8 @@ sub gettime
 	my $val;					# Value from line.
 	my $retstr;					# Return string.
 	my @chron = ();					# Time fields.
+
+        $line =~ s/"//g;
 
 	#
 	# Dig out the values from the line.
@@ -67,6 +71,8 @@ sub getdate
 	my $retstr;					# Return string.
 	my @chron = ();					# Time fields.
 
+        $line =~ s/"//g;
+
 	#
 	# Dig out the values from the line.
 	#
@@ -79,7 +85,7 @@ sub getdate
 	#
 	$val =~ s/[<>]//g;
 	@chron = split /T/, $val;
-	$chron[0] =~ s/(....)(..)(..)/$3\/$2\/$1/;
+	$chron[0] =~ s/(....)(..)(..)/$2\/$3\/$1/;
 	$chron[1] =~ s/(..)(..)(.*)/$1:$2/;
 
 	#
@@ -99,6 +105,8 @@ sub getname
 	my $name;				# Name from data line.
 	my $email;				# Email address from data line.
 	my $retstr;				# Return string.
+
+        $ln =~ s/"//g;
 
 	#
 	# Dig the name and email address from the line.
@@ -151,4 +159,5 @@ while (<STDIN>) {
         }
 }
 
-print "google --cal SoftKinetic \"$what with $who at $start $date\""
+print "google calendar add --cal SoftKinetic \"$what with $who at $start $date\"\n";
+system("google calendar add --cal SoftKinetic \"$what with $who at $start $date\"");
