@@ -8,8 +8,6 @@ usage () {
 	echo "    -h: display this help"
  	echo "    -a: audio recording. This option will start the audio for"
         echo "        audio recording (mp3 format)."
-	echo "    -a: agenda. Just starts the editor to prepare the agenda."
-	echo "        This is different from the minutes of meeting..."
 	echo ""
 	exit 0
 }
@@ -66,7 +64,13 @@ read context
 
 sound_card=$( ls /sys/class/sound/ | grep card  )
 
-gvim "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}.mom"
+git clone /home/gsacre/SpiderOak/SK-Minutes_of_Meeting "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}"
+
+sed -i "s/NAME=SK-template/NAME=${context}/g" "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/Makefile"
+
+gvim --servername mom --remote-tab-silent "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/minutes.tex"
+sleep 0.5
+gvim --servername mom --remote-tab-silent "+/& Gregory SACRE & GSA/" "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/SK-template.tex"
 
 if [ $audio_recording -eq 1 ]; then
 	if [ $( ls /sys/class/sound/ | grep card | wc -l ) -eq 1 ] && [ $( echo $sound_card | grep 0 | wc -l ) -gt 0 ]; then

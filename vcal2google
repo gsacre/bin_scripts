@@ -7,6 +7,7 @@ my $end;
 my $date;
 my $who;
 my $what;
+my $where;
 
 my $longaddrlen = -1;
 
@@ -17,12 +18,30 @@ sub getsumm
         $line =~ s/"//g;
 
 	$line =~ /^SUMMARY(.*)$/;
-	$line =~ s/^SUMMARY.*://g;
+	$line =~ s/^SUMMARY.*: *//g;
 
 	$line =~ s/\\,/,/g;
 	$line =~ s/\\;/;/g;
         $line =~ s/\n//g;
         #$line =~ s/\\\\/\//g;
+
+	return($line);
+}
+
+sub getlocation
+{
+	my $line = shift;
+
+        $line =~ s/"//g;
+
+	$line =~ /^LOCATION(.*)$/;
+	$line =~ s/^LOCATION.*: *//g;
+
+	$line =~ s/\\,/,/g;
+	$line =~ s/\\;/;/g;
+        $line =~ s/\n//g;
+        $line =~ s/\\\\/\//g;
+        $line =~ s/\r//g;
 
 	return($line);
 }
@@ -157,7 +176,11 @@ while (<STDIN>) {
         if ($_ =~ /^SUMMARY/) {
                 $what = getsumm($_);
         }
+
+        if ($_ =~ /^LOCATION/) {
+                $where = getlocation($_);
+        }
 }
 
-print "google calendar add --cal SoftKinetic \"$what with $who at $start $date\"\n";
-system("google calendar add --cal SoftKinetic \"$what with $who at $start $date\"");
+print "google calendar add --cal SoftKinetic \"$what with $who at $where $start $date\"\n";
+system("google calendar add --cal SoftKinetic \"$what with $who at $where $start $date\"");
