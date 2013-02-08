@@ -62,15 +62,46 @@ echo
 echo -n "Please enter the context of the meeting: "
 read context
 
+git clone /home/gsacre/SpiderOak/SK-Minutes_of_Meeting "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}" >/dev/null &
+
+echo ""
+echo -n "Please enter the location: [Conference call] "
+read location
+echo ""
+echo "Confidentiality level:"
+echo "1) Confidential"
+echo "2) Under NDA"
+echo "3) Internal purpose only"
+echo -n "Please enter the confidentiality level: "
+read confidentiality
+
 sound_card=$( ls /sys/class/sound/ | grep card  )
 
-git clone /home/gsacre/SpiderOak/SK-Minutes_of_Meeting "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}"
+context_escaped="`echo $context | tr ' ' '_'`"
+sed -i "s/NAME=SK-template/NAME=${context_escaped}/g" "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/Makefile"
+sed -i "s/Title{Purpose of the meeting}/Title{${context}}/g" "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/SK-template.tex"
+sed -i "s!Location{Location of the meeting / Conference Call}!Location{${location}}!g" "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/SK-template.tex"
 
-sed -i "s/NAME=SK-template/NAME=${context}/g" "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/Makefile"
+case $confidentiality in
+        1)
+                echo level 1
+                sed -i "s!Confidentiality{Confidential/Under NDA/Internal purpose only}!Confidentiality{Confidential}!g" "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/SK-template.tex"
+                ;;
+        2)
+                echo level 2
+                sed -i "s!Confidentiality{Confidential/Under NDA/Internal purpose only}!Confidentiality{Under NDA}!g" "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/SK-template.tex"
+                ;;
+        3)
+                echo level 3
+                sed -i "s!Confidentiality{Confidential/Under NDA/Internal purpose only}!Confidentiality{Internal purpose only}!g" "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/SK-template.tex"
+                ;;
+esac
 
 gvim --servername mom --remote-tab-silent "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/minutes.tex"
 sleep 0.5
-gvim --servername mom --remote-tab-silent "+/& Gregory SACRE & GSA/" "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/SK-template.tex"
+gvim --servername mom --remote-tab-silent "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/ongoing.tex"
+sleep 0.5
+gvim --servername mom --remote-tab-silent "+/& Gregory SACRE & GSA/<CR>" "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/SK-template.tex"
 
 if [ $audio_recording -eq 1 ]; then
 	if [ $( ls /sys/class/sound/ | grep card | wc -l ) -eq 1 ] && [ $( echo $sound_card | grep 0 | wc -l ) -gt 0 ]; then
