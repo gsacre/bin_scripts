@@ -103,6 +103,8 @@ gvim --servername mom --remote-tab-silent "/home/gsacre/projects/${proj_chosen}/
 sleep 0.5
 gvim --servername mom --remote-tab-silent "+/& Gregory SACRE & GSA/<CR>" "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/SK-template.tex"
 
+cd "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}"
+
 if [ $audio_recording -eq 1 ]; then
 	if [ $( ls /sys/class/sound/ | grep card | wc -l ) -eq 1 ] && [ $( echo $sound_card | grep 0 | wc -l ) -gt 0 ]; then
 		echo "Sound cards 0 found!"
