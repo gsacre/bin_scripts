@@ -1,0 +1,13 @@
+#!/bin/bash
+#
+# ~/bin/dwm-start
+#
+
+$HOME/bin/dwm-statusbar &
+
+#while true; do
+    # Log stderror to a file
+    /usr/bin/dwm 2>  $HOME/var/log/dwm.log
+    # No error logging
+    #dwm >/dev/null 2>&1
+#done
