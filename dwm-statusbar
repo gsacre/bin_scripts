@@ -24,11 +24,38 @@
 #}
 
 print_email_unread() {
-  echo -ne "\x04\uE01C\uE01D\x0D\uE014"
+  echo -ne "\x04\uE01C\uE01D\x0D\uE014 \x07I:"
   for maildir in $(find $HOME/Maildir/Inbox/new -type d); do
     unread_count="$(ls "${maildir}" | wc -l)"
     if [[ $unread_count -ne 0 ]]; then
-      echo -ne " \x07${unread_count}"
+      echo -ne " \x05${unread_count}"
+    else
+      echo -ne " \x0D0"
+    fi
+  done
+  echo -ne " \x07P:"
+  for maildir in $(find $HOME/Maildir/perso/new -type d); do
+    unread_count="$(ls "${maildir}" | wc -l)"
+    if [[ $unread_count -ne 0 ]]; then
+      echo -ne " \x05${unread_count}"
+    else
+      echo -ne " \x0D0"
+    fi
+  done
+  echo -ne " \x07R:"
+  for maildir in $(find $HOME/Maildir/redmine_ext/new -type d); do
+    unread_count="$(ls "${maildir}" | wc -l)"
+    if [[ $unread_count -ne 0 ]]; then
+      echo -ne " \x05${unread_count}"
+    else
+      echo -ne " \x0D0"
+    fi
+  done
+  echo -ne " \x07H:"
+  for maildir in $(find $HOME/Maildir/hr/new -type d); do
+    unread_count="$(ls "${maildir}" | wc -l)"
+    if [[ $unread_count -ne 0 ]]; then
+      echo -ne " \x05${unread_count}"
     else
       echo -ne " \x0D0"
     fi
@@ -63,6 +90,14 @@ print_datetime() {
   echo -ne "\x04\uE01C\uE01D\x11\uE016 ${datetime}\x04\uE01C"
 }
 
+print_battery() {
+        charge_full="$(cat /sys/bus/acpi/drivers/battery/PNP0C0A:00/power_supply/BAT0/charge_full_design)"
+        charge_now="$(cat /sys/bus/acpi/drivers/battery/PNP0C0A:00/power_supply/BAT0/charge_now)"
+
+        charge_percent=$(( $charge_now * 100 / $charge_full ))
+        echo -ne "\x04\uE01D\x0F\uE017 ${charge_percent}%"
+}
+
 # network (from: http://dzen.geekmode.org/dwiki/doku.php?id=dzen:network-meter)
 # cpu (from: https://bbs.archlinux.org/viewtopic.php?pid=661641#p661641)
 rx_old=$(cat /sys/class/net/eth0/statistics/rx_bytes)
@@ -93,6 +128,7 @@ while true; do
   xsetroot -name "$(print_email_unread)\
 $(print_cpu_used)$(print_mem_used)\
 $(print_rx_rate)$(print_tx_rate)\
+$(print_battery)\
 $(print_volume)\
 $(print_datetime)"
 

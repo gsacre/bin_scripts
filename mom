@@ -80,7 +80,7 @@ sound_card=$( ls /sys/class/sound/ | grep card  )
 context_escaped="`echo $context | tr ' ' '_'`"
 sed -i "s/NAME=SK-template/NAME=${context_escaped}/g" "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/Makefile"
 sed -i "s/Title{Purpose of the meeting}/Title{${context}}/g" "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/SK-template.tex"
-sed -i "s!Location{Location of the meeting / Conference Call}!Location{${location}}!g" "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/SK-template.tex"
+sed -i "s/Location{Location of the meeting \/ Conference Call}/Location{${location}}/g" "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/SK-template.tex"
 
 case $confidentiality in
         1)
