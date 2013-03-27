@@ -25,6 +25,6 @@ fi
 
 notify-send -u low "BACKUP" "Starting full backup of HOME"
 echo "Backup of /home/gsacre starting at `date`" >> /home/gsacre/var/log/backup.log
-duplicity full --allow-source-mismatch --encrypt-key 0C3DCFF4 --exclude /home/gsacre/projects --exclude /home/gsacre/Downloads --exclude /home/gsacre/backup --exclude /home/gsacre/sources --exclude /home/gsacre/Maildir --exclude /home/gsacre/.cache --exclude /home/gsacre/VirtualBox_VMs --exclude /home/gsacre/SpiderOak /home/gsacre file:///mnt/u/backup_home >> /home/gsacre/var/log/backup.log
+duplicity full --allow-source-mismatch --encrypt-key 0C3DCFF4 --exclude /home/gsacre/projects --exclude /home/gsacre/Downloads --exclude /home/gsacre/backup --exclude /home/gsacre/sources --exclude /home/gsacre/Maildir --exclude /home/gsacre/.cache --exclude /home/gsacre/VirtualBox_VMs --exclude /home/gsacre/SpiderOak --exclude /home/gsacre/tmp /home/gsacre file:///mnt/u/backup_home >> /home/gsacre/var/log/backup.log
 echo "Backup of /home/gsacre finished at `date`" >> /home/gsacre/var/log/backup.log
 notify-send -u low "BACKUP" "Ended full backup of HOME"
