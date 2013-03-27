@@ -1,4 +1,6 @@
 #!/bin/sh
+sudo umount /mnt/w
+sudo umount /mnt/u
 xrandr --output LVDS1 --auto --primary
 xrandr --output VGA1 --off
 xrandr --output HDMI1 --off
