@@ -1,0 +1,4 @@
+#!/bin/bash
+
+remind -z /home/gsacre/SpiderOak/reminders/reminders &
+remind -z '-kgxmessage -buttons "Close:1" -default "Close" -center -font "PragmataPro 12" -fg black -bg white -wrap -title "Hey!" %s &' /home/gsacre/SpiderOak/reminders/sk.rem

@@ -101,7 +101,7 @@ gvim --servername mom --remote-tab-silent "/home/gsacre/projects/${proj_chosen}/
 sleep 0.5
 gvim --servername mom --remote-tab-silent "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/ongoing.tex"
 sleep 0.5
-gvim --servername mom --remote-tab-silent "+/& Gregory SACRE & GSA/<CR>" "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/SK-template.tex"
+gvim --servername mom --remote-tab-silent "+/& Gregory & GSA/<CR>" "/home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}/SK-template.tex"
 
 echo "MoM path: /home/gsacre/projects/${proj_chosen}/mom/${context}_-_${date}"
 

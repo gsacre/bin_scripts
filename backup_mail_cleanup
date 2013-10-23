@@ -3,10 +3,10 @@
 DISPLAY=:0.0
 export DISPLAY
 
-if [ `/sbin/ifconfig eth0 | grep inet | grep -v inet6 | wc -l` -lt 1 ]; then
-	echo "Your eth0 interface is not up, so let's not overcrowd the wifi..." >>  /home/gsacre/var/log/backup.log
-	exit 1
-fi
+#if [ `/sbin/ifconfig eth0 | grep inet | grep -v inet6 | wc -l` -lt 1 ]; then
+#	echo "Your eth0 interface is not up, so let's not overcrowd the wifi..." >>  /home/gsacre/var/log/backup.log
+#	exit 1
+#fi
 
 if [ `grep -i softkinetic /etc/resolv.conf | wc -l` -lt 1 ]; then
 	echo "You are not on the Softkinetic network... I go back to sleep..." >> /home/gsacre/var/log/backup.log
@@ -25,6 +25,6 @@ fi
 
 notify-send -u low "BACKUP" "Starting cleanup of MAIL backups"
 echo "Cleanup of /home/gsacre/Maildir backup starting at `date`" >> /home/gsacre/var/log/backup.log
-duplicity remove-older-than 12W file:///mnt/u/backup_mail >> /home/gsacre/var/log/backup.log
+duplicity --force remove-older-than 2W file:///mnt/u/backup_mail >> /home/gsacre/var/log/backup.log
 echo "Cleanup of /home/gsacre/Maildir backup finished at `date`" >> /home/gsacre/var/log/backup.log
 notify-send -u low "BACKUP" "Finished cleanup of MAIL backups"
